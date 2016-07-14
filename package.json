@@ -1,0 +1,22 @@
+{
+  "name": "dolos",
+  "version": "0.1.0",
+  "description": "Hide files into your files so your data become harder to other people find it",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dansoah/dolos.git"
+  },
+  "author": "Danilo Rechi (talkto(at)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dansoah/dolos/issues"
+  },
+  "homepage": "https://github.com/dansoah/dolos#readme",
+  "dependencies": {
+    "q": "^1.4.1"
+  }
+}
