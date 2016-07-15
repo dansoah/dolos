@@ -69,6 +69,17 @@ function getAsciiBytesFromFile(file,offset,length,position){
     return deferred.promise;
 }
 
+function getIntBytesFromFile(file,offset,length,position){
+    const deferred = Q.defer();
+
+    getByteBuffer(file,offset,length,position).then( (buffer) => {
+        let data = buffer.readUIntBE(0, buffer.length);
+        return deferred.resolve(data);
+    })
+
+    return deferred.promise;
+}
+
 function checkForPngSignature(file){
     const deferred = Q.defer();
     const signature_bytes = [
@@ -99,9 +110,67 @@ function checkForPngSignature(file){
 
 function PngHandler(_file){
     const file = _file;
+    let chunks = [];
 
-    this.getChunks = function(){
-        return "there's a lot of chunks";
+    this.getChunks = function() {
+
+        return _getChunks(8);
+
+    }
+
+    var _getChunks = function(position, _resolve, _reject){
+
+        //TODO: rewrite this using Q
+        return new Promise( (resolve,reject) => {
+            if(typeof _resolve === 'undefined'){
+                _resolve = resolve;
+                _reject = reject;
+            }
+            getChunkAt(position).then( (chunk) => {
+                chunks.push(chunk);
+                if( chunk.starts_at == Infinity || chunk.ends_at == Infinity || chunk.size == 0){
+                    return _resolve(chunks);
+                }
+                return _getChunks(chunk.ends_at,_resolve,_reject)
+            })//getChunkAt
+
+        })//Promise
+    }
+
+    var getChunkAt = function(start){
+
+        const deferred = Q.defer();
+
+        let chunk_size_offset = start;
+        let chunk_type_offset = chunk_size_offset + 4;
+
+        Q.all([
+            getIntBytesFromFile(file,0,4,chunk_size_offset),
+            getAsciiBytesFromFile(file,0,4,chunk_type_offset)
+        ]).done( (info) => {
+
+            let chunk_size = info[0];
+            let chunk_type = info[1].join('');
+
+            //+4 beacause after chunk type offset we have the 4 chunk type bytes
+            let chunk_crc_offset = chunk_type_offset+chunk_size+4;
+
+            getHexBytesFromFile(file,0,4,chunk_crc_offset)
+                .then( (buffer) => {
+
+                    let chunk = {
+                        type: chunk_type,
+                        size: chunk_size,
+                        crc: buffer,
+                        starts_at: chunk_size_offset,
+                        ends_at: chunk_crc_offset+4
+                    };
+
+                    return deferred.resolve(chunk)
+                })
+        })
+
+        return deferred.promise;
     }
 }
 
@@ -119,8 +188,7 @@ function getFileHandler(file){
 
 
 function injectData(handler){
-    console.log("ok",handler);
-    console.log(handler.getChunks());
+    handler.getChunks().then(console.log);
 }
 openFileForReading(image_path)
     .then(getFileHandler)
